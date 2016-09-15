@@ -54,10 +54,10 @@ public class SkinRepository<I> {
         URL url;
         switch (key.username) {
         case "steve":
-            url = new URL("https://minecraft.net/images/steve.png");
+            url = new URL("http://assets.mojang.com/SkinTemplates/steve.png");
             break;
         case "alex":
-            url = new URL("https://minecraft.net/images/alex.png");
+            url = new URL("http://assets.mojang.com/SkinTemplates/alex.png");
             break;
         default:
             url = new URL("http://skins.minecraft.net/MinecraftSkins/" + key.username + ".png");
