@@ -1,6 +1,8 @@
 package at.yawk.mcskin;
 
 import at.yawk.mcskin.transform.SkinTransformer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -20,6 +22,11 @@ import lombok.Value;
  * @author yawkat
  */
 public class SkinRepository<I> {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final UUID STEVE_UUID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    private static final UUID ALEX_UUID = UUID.fromString("00000000-0000-0000-0000-000000000001");
+
     private final Configuration<I> configuration;
     private final LoadingCache<Request, Optional<I>> cache;
 
@@ -39,29 +46,47 @@ public class SkinRepository<I> {
     }
 
     public I getSkin(UUID uuid, String username, SkinTransformer transformer) {
-        Request primaryRequest = new Request(username, transformer);
+        Request primaryRequest = new Request(uuid, transformer);
         Optional<I> primarySkin = cache.getUnchecked(primaryRequest);
         if (primarySkin.isPresent()) {
             return primarySkin.get();
         }
 
-        String fallbackUsername = (uuid.getLeastSignificantBits() & 1) == 0 ? "steve" : "alex";
-        return cache.getUnchecked(new Request(fallbackUsername, transformer)).get();
+        UUID fallbackUuid = (uuid.getLeastSignificantBits() & 1) == 0 ? STEVE_UUID : ALEX_UUID;
+        return cache.getUnchecked(new Request(fallbackUuid, transformer)).get();
     }
 
     @SneakyThrows(MalformedURLException.class)
     private Optional<I> doLoad(Request key) {
         URL url;
-        switch (key.username) {
-        case "steve":
-            url = new URL("http://assets.mojang.com/SkinTemplates/steve.png");
-            break;
-        case "alex":
-            url = new URL("http://assets.mojang.com/SkinTemplates/alex.png");
-            break;
-        default:
-            url = new URL("http://skins.minecraft.net/MinecraftSkins/" + key.username + ".png");
-            break;
+        if (key.uuid.equals(STEVE_UUID) || key.uuid.equals(ALEX_UUID)) {
+            url = key.uuid.equals(STEVE_UUID) ?
+                    new URL("http://assets.mojang.com/SkinTemplates/steve.png") :
+                    new URL("http://assets.mojang.com/SkinTemplates/alex.png");
+        } else {
+            try {
+                JsonNode profile = OBJECT_MAPPER.readTree(new URL(
+                        "https://sessionserver.mojang.com/session/minecraft/profile/" +
+                        key.uuid.toString().replace("-", "")));
+                if (profile == null) { return Optional.empty(); }
+                JsonNode textures = null;
+                for (JsonNode property : profile.path("properties")) {
+                    if ("textures".equals(property.path("name").textValue())) {
+                        byte[] binary = property.path("value").binaryValue();
+                        if (binary != null) {
+                            textures = OBJECT_MAPPER.readTree(binary);
+                        }
+                        break;
+                    }
+                }
+                if (textures == null) { return Optional.empty(); }
+
+                String s = textures.path("textures").path("SKIN").path("url").textValue();
+                if (s == null) { return Optional.empty(); }
+                url = new URL(s);
+            } catch (IOException e) {
+                return Optional.empty();
+            }
         }
 
         BufferedImage image;
@@ -76,7 +101,7 @@ public class SkinRepository<I> {
 
     @Value
     private static class Request {
-        private String username;
+        private UUID uuid;
         private SkinTransformer transformer;
     }
 }
