@@ -4,7 +4,7 @@
 
     <groupId>at.yawk.mcskin</groupId>
     <artifactId>mcskin</artifactId>
-    <version>1.0</version>
+    <version>1.1-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -34,7 +34,7 @@
         <connection>scm:git:https://github.com/yawkat/mcskin.git</connection>
         <developerConnection>scm:git:git@github.com:yawkat/mcskin.git</developerConnection>
         <url>http://github.com/yawkat/mcskin/tree/master</url>
-        <tag>mcskin-1.0</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <distributionManagement>
